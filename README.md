@@ -33,7 +33,9 @@
 
 ## Разработка
 
-Монорепозиторий на pnpm: `apps/api` — бэкенд (Fastify, PostgreSQL, Redis, WebSocket). Мобильное приложение будет в `apps/mobile`.
+Монорепозиторий на pnpm:
+- `apps/api` — бэкенд (Fastify, PostgreSQL, Redis, WebSocket), см. [apps/api/README.md](apps/api/README.md);
+- `apps/mobile` — приложение для iOS и Android (Expo, React Native), см. [apps/mobile/README.md](apps/mobile/README.md).
 
 ```bash
 docker compose up -d   # Postgres + Redis
@@ -41,5 +43,3 @@ pnpm install
 pnpm dev               # API на http://localhost:3000
 pnpm test              # тесты (нужны Postgres и Redis из docker compose)
 ```
-
-Описание API и запуска — в [apps/api/README.md](apps/api/README.md).
