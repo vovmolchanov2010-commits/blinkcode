@@ -30,3 +30,16 @@
 | 7 | [SOS с live-трансляцией](docs/features/07-sos.md) | MVP |
 | 8 | [Виджет с ближайшими друзьями](docs/features/08-widget.md) | v1.1 |
 | 9 | [Импорт любимых мест и авто-«дом/работа»](docs/features/09-places-import.md) | MVP (урезанно) |
+
+## Разработка
+
+Монорепозиторий на pnpm: `apps/api` — бэкенд (Fastify, PostgreSQL, Redis, WebSocket). Мобильное приложение будет в `apps/mobile`.
+
+```bash
+docker compose up -d   # Postgres + Redis
+pnpm install
+pnpm dev               # API на http://localhost:3000
+pnpm test              # тесты (нужны Postgres и Redis из docker compose)
+```
+
+Описание API и запуска — в [apps/api/README.md](apps/api/README.md).
