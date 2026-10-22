@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api';
-import { normalizePhone } from '../lib/format';
+import { normalizePhone, normalizeServerUrl } from '../lib/format';
+import { api, setServerUrl } from '../services/client';
 import { useAuth } from '../state/auth';
 import { Button, ErrorText, Input, Muted, Title } from '../ui/components';
 import { colors, spacing } from '../ui/theme';
@@ -29,6 +30,9 @@ export default function SignInScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devCode, setDevCode] = useState<string | null>(null);
+  const [server, setServer] = useState(api.baseUrl);
+  const [serverInput, setServerInput] = useState('');
+  const [editingServer, setEditingServer] = useState(false);
 
   async function submitPhone() {
     const normalized = normalizePhone(phoneInput);
@@ -54,6 +58,22 @@ export default function SignInScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function saveServer() {
+    const url = normalizeServerUrl(serverInput);
+    if (!url) return setError('Адрес сервера вида 192.168.1.5:3000 или https://example.ru');
+    await setServerUrl(url);
+    setServer(url);
+    setEditingServer(false);
+    setError(null);
+  }
+
+  async function resetServer() {
+    await setServerUrl(null);
+    setServer(api.baseUrl);
+    setEditingServer(false);
+    setError(null);
   }
 
   async function submitCode(value = code) {
@@ -91,6 +111,33 @@ export default function SignInScreen() {
             />
             {error && <ErrorText>{error}</ErrorText>}
             <Button title="Получить код" onPress={submitPhone} loading={busy} />
+
+            {/* Одна сборка приложения работает с любым сервером: локальным или в облаке. */}
+            {editingServer ? (
+              <View style={styles.server}>
+                <Input
+                  value={serverInput}
+                  onChangeText={setServerInput}
+                  placeholder="192.168.1.5:3000"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  onSubmitEditing={saveServer}
+                />
+                <Button title="Сохранить сервер" variant="secondary" small onPress={saveServer} />
+                <Button title="Сервер по умолчанию" variant="secondary" small onPress={resetServer} />
+              </View>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setServerInput(server);
+                  setEditingServer(true);
+                }}
+              >
+                <Muted style={styles.serverLink}>Сервер: {server} · изменить</Muted>
+              </Pressable>
+            )}
           </View>
         ) : (
           <View style={styles.form}>
@@ -135,4 +182,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: spacing.xl, justifyContent: 'center' },
   header: { marginBottom: spacing.xl, gap: spacing.sm },
   form: { gap: spacing.md },
+  server: { gap: spacing.sm, marginTop: spacing.lg },
+  serverLink: { textAlign: 'center', marginTop: spacing.lg, fontSize: 13 },
 });

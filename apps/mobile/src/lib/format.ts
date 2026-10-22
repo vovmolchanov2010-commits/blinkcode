@@ -14,6 +14,20 @@ export function normalizePhone(input: string): string | null {
   return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : null;
 }
 
+/**
+ * Адрес сервера из того, что ввёл пользователь: «192.168.1.5:3000» → «http://192.168.1.5:3000».
+ * null — если это не http(s)-адрес.
+ */
+export function normalizeServerUrl(input: string): string | null {
+  const trimmed = input.trim();
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  // Без URL(): в React Native у него реализованы не все свойства.
+  const match = /^(https?):\/\/([a-z0-9.-]+|\[[0-9a-f:]+\])(:\d{1,5})?(\/[^\s?#]*)?$/i.exec(withScheme);
+  if (!match) return null;
+  const [, scheme, host, port = '', path = ''] = match;
+  return `${scheme!.toLowerCase()}://${host!.toLowerCase()}${port}${path.replace(/\/+$/, '')}`;
+}
+
 export function displayName(user: Pick<PublicProfile, 'displayName' | 'username'>): string {
   return user.displayName ?? (user.username ? `@${user.username}` : 'Без имени');
 }

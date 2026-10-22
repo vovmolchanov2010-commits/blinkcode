@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { Me } from '../lib/types';
-import { api } from '../services/client';
+import { api, loadServerUrl } from '../services/client';
 import { stopSharingLocation } from '../services/location';
 
 export type AuthState =
@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     api.onSessionExpired = () => setState({ status: 'signedOut' });
     void (async () => {
+      await loadServerUrl();
       if (!(await api.hasSession())) return setState({ status: 'signedOut' });
       setState({ status: 'signedIn', me: null });
       try {

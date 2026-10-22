@@ -1,0 +1,66 @@
+name: Android APK
+
+# Собирает устанавливаемый APK приложения. Готовый файл — в разделе Artifacts запуска.
+# Запустить вручную: Actions → Android APK → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Сервер по умолчанию (в приложении его можно сменить на экране входа)"
+        required: false
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/android.yml"
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # Порядок: ввод при ручном запуске → переменная репозитория → локальный сервер.
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url || vars.EXPO_PUBLIC_API_URL || 'http://localhost:3000' }}
+      # Без ключа карта на Android будет пустой (Settings → Secrets → Actions).
+      GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - run: pnpm install --frozen-lockfile
+
+      # Нативный проект генерируется из app.config.ts (Continuous Native Generation).
+      - name: Generate android project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      # Release подписывается debug-ключом из шаблона Expo — APK ставится на телефон как есть.
+      - name: Build APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blink-android-${{ github.sha }}
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30

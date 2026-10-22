@@ -55,10 +55,19 @@ export class ApiClient {
   private refreshing: Promise<Tokens | null> | null = null;
 
   constructor(
-    readonly baseUrl: string,
+    private url: string,
     private readonly store: TokenStore,
     private readonly fetchImpl: typeof fetch = (...args) => fetch(...args),
   ) {}
+
+  get baseUrl(): string {
+    return this.url;
+  }
+
+  /** Сменить сервер. Токены от другого сервера не подойдут — менять только без сессии. */
+  setBaseUrl(url: string): void {
+    this.url = url.replace(/\/+$/, '');
+  }
 
   async hasSession(): Promise<boolean> {
     return (await this.loadTokens()) !== null;

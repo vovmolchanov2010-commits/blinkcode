@@ -4,6 +4,7 @@ import {
   formatDistance,
   initials,
   normalizePhone,
+  normalizeServerUrl,
   timeAgo,
   toLocationPoint,
 } from '../src/lib/format';
@@ -52,6 +53,24 @@ describe('normalizePhone', () => {
   it('rejects non-phones', () => {
     expect(normalizePhone('123')).toBeNull();
     expect(normalizePhone('abc')).toBeNull();
+  });
+});
+
+describe('normalizeServerUrl', () => {
+  it.each([
+    ['192.168.1.5:3000', 'http://192.168.1.5:3000'],
+    [' https://51.250.1.2.sslip.io/ ', 'https://51.250.1.2.sslip.io'],
+    ['HTTP://Example.RU/api/', 'http://example.ru/api'],
+    ['localhost:3000', 'http://localhost:3000'],
+  ])('%s → %s', (input, expected) => {
+    expect(normalizeServerUrl(input)).toBe(expected);
+  });
+
+  it('rejects garbage and other schemes', () => {
+    expect(normalizeServerUrl('')).toBeNull();
+    expect(normalizeServerUrl('ftp://example.ru')).toBeNull();
+    expect(normalizeServerUrl('не адрес')).toBeNull();
+    expect(normalizeServerUrl('http://exa mple.ru')).toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
 import * as TaskManager from 'expo-task-manager';
 import { toLocationPoint } from '../lib/format';
-import { api } from './client';
+import { api, loadServerUrl } from './client';
 
 export const LOCATION_TASK = 'blink-location-updates';
 
@@ -12,6 +12,8 @@ export const LOCATION_TASK = 'blink-location-updates';
  */
 TaskManager.defineTask<{ locations: Location.LocationObject[] }>(LOCATION_TASK, async ({ data, error }) => {
   if (error || !data?.locations?.length) return;
+  // В фоне приложение может стартовать без экранов — адрес сервера загружаем здесь.
+  await loadServerUrl();
   if (!(await api.hasSession())) return;
   try {
     await api.sendLocation(data.locations.slice(-100).map((l) => toLocationPoint(l)));

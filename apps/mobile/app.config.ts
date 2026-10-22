@@ -28,6 +28,12 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-secure-store',
     [
+      'expo-build-properties',
+      // Разрешаем http: тестовый сервер в локальной сети работает без HTTPS.
+      // Облачный сервер (deploy/yandex) отдаёт HTTPS.
+      { android: { usesCleartextTraffic: true } },
+    ],
+    [
       'expo-location',
       {
         locationWhenInUsePermission:
