@@ -42,17 +42,19 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
       - run: pnpm install --frozen-lockfile
 
       # Нативный проект генерируется из app.config.ts (Continuous Native Generation).
       - name: Generate android project
         working-directory: apps/mobile
         run: npx expo prebuild --platform android --no-install
+
+      # Кэш Gradle — после prebuild: до него в репозитории нет gradle-файлов.
+      - uses: gradle/actions/setup-gradle@v4
 
       # Release подписывается debug-ключом из шаблона Expo — APK ставится на телефон как есть.
       - name: Build APK
