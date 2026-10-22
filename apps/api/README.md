@@ -11,8 +11,16 @@ pnpm install
 pnpm dev                      # миграции + сервер на :3000 с перезапуском
 ```
 
-SMS-провайдера пока нет: коды входа пишутся в лог сервера (`SMS: Код для входа: 123456`).
-По этой же причине сервер отказывается стартовать с `NODE_ENV=production`.
+В разработке SMS не отправляются: коды входа пишутся в лог сервера (`SMS: Код для входа: 123456`).
+
+| Переменная | Назначение |
+|---|---|
+| `DATABASE_URL`, `REDIS_URL` | Подключение к PostgreSQL и Redis |
+| `JWT_SECRET`, `OTP_SECRET` | Обязательны в production, ≥ 32 символов |
+| `SMS_PROVIDER` | `log` — коды в лог, `smsru` — SMS через sms.ru. В production задаётся явно |
+| `SMSRU_API_ID` | Ключ sms.ru для `SMS_PROVIDER=smsru` |
+
+Деплой в Yandex Cloud — [deploy/yandex/README.md](../../deploy/yandex/README.md).
 
 ## Тесты
 

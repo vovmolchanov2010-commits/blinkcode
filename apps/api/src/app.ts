@@ -7,7 +7,7 @@ import type { Config } from './config.js';
 import type { AppContext } from './context.js';
 import { HttpError } from './errors.js';
 import { registerAuthenticate } from './modules/auth/authenticate.js';
-import { LogSmsSender, OtpService, type SmsSender } from './modules/auth/otp.js';
+import { LogSmsSender, OtpService, type SmsSender, SmsRuSender } from './modules/auth/otp.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { TokenService } from './modules/auth/tokens.js';
 import { registerFriendRoutes } from './modules/friends/routes.js';
@@ -38,6 +38,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof HttpError) {
+      if (err.statusCode >= 500) req.log.error({ err, cause: err.cause }, err.message);
       return reply.code(err.statusCode).send({ error: err.code, message: err.message });
     }
     // Ошибки самого Fastify (неверный JSON, неподдерживаемый Content-Type и т.п.).
@@ -60,7 +61,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     pool,
     redis,
     bus,
-    otp: new OtpService(redis, config.OTP_SECRET, deps.sms ?? new LogSmsSender(app.log)),
+    otp: new OtpService(redis, config.OTP_SECRET, deps.sms ?? createSmsSender(config, app)),
     tokens: new TokenService(pool, app, config.REFRESH_TOKEN_TTL_DAYS),
     location: new LocationService(pool, redis, bus),
   };
@@ -77,4 +78,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerGateway(app, ctx);
 
   return app;
+}
+
+function createSmsSender(config: Config, app: FastifyInstance): SmsSender {
+  if (config.SMS_PROVIDER === 'smsru') return new SmsRuSender(config.SMSRU_API_ID!);
+  if (config.NODE_ENV === 'production') {
+    app.log.warn('SMS_PROVIDER=log: login codes are written to the server log');
+  }
+  return new LogSmsSender(app.log);
 }

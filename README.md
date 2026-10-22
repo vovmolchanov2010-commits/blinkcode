@@ -36,6 +36,7 @@
 Монорепозиторий на pnpm:
 - `apps/api` — бэкенд (Fastify, PostgreSQL, Redis, WebSocket), см. [apps/api/README.md](apps/api/README.md);
 - `apps/mobile` — приложение для iOS и Android (Expo, React Native), см. [apps/mobile/README.md](apps/mobile/README.md).
+- `deploy/yandex` — деплой сервера в Yandex Cloud, см. [deploy/yandex/README.md](deploy/yandex/README.md).
 
 ```bash
 docker compose up -d   # Postgres + Redis

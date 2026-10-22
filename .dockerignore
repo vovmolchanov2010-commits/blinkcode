@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.expo
+.git
+docs
+deploy
+# Из мобильного приложения для сборки API нужен только package.json (для lockfile).
+apps/mobile/*
+!apps/mobile/package.json

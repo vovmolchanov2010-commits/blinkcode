@@ -6,12 +6,38 @@ export interface SmsSender {
   send(phone: string, text: string): Promise<void>;
 }
 
-/** Пишет SMS в лог. Только для разработки — реального провайдера пока нет. */
+/** Пишет SMS в лог. Для разработки и закрытого теста, где коды смотрят в логах сервера. */
 export class LogSmsSender implements SmsSender {
   constructor(private readonly log: { info: (obj: object, msg: string) => void }) {}
 
   async send(phone: string, text: string): Promise<void> {
     this.log.info({ phone }, `SMS: ${text}`);
+  }
+}
+
+/** Отправка через SMS.ru (https://sms.ru/api/send). */
+export class SmsRuSender implements SmsSender {
+  constructor(
+    private readonly apiId: string,
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {}
+
+  async send(phone: string, text: string): Promise<void> {
+    const to = phone.replace(/^\+/, '');
+    const res = await this.fetchImpl('https://sms.ru/sms/send', {
+      method: 'POST',
+      body: new URLSearchParams({ api_id: this.apiId, to, msg: text, json: '1' }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const body = (await res.json().catch(() => null)) as {
+      status?: string;
+      status_text?: string;
+      sms?: Record<string, { status?: string; status_text?: string }>;
+    } | null;
+    const sms = body?.sms?.[to];
+    if (!res.ok || body?.status !== 'OK' || sms?.status !== 'OK') {
+      throw new Error(`sms.ru: ${sms?.status_text ?? body?.status_text ?? `HTTP ${res.status}`}`);
+    }
   }
 }
 
@@ -50,7 +76,13 @@ export class OtpService {
       .set(resendKey, '1', 'EX', RESEND_INTERVAL_SEC)
       .exec();
 
-    await this.sms.send(phone, `Код для входа: ${code}`);
+    try {
+      await this.sms.send(phone, `Код для входа: ${code}`);
+    } catch (err) {
+      // Код не дошёл — разрешаем сразу запросить новый.
+      await this.redis.del(codeKey, resendKey);
+      throw new HttpError(502, 'sms_failed', 'could not send SMS', { cause: err });
+    }
   }
 
   /** Проверяет код и сжигает его. Бросает 400/429, если код неверный. */

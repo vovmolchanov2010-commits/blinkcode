@@ -6,11 +6,6 @@ import { createPool } from './db/index.js';
 loadEnvFile();
 const config = loadConfig();
 
-if (config.NODE_ENV === 'production') {
-  // LogSmsSender пишет коды входа в лог — в production нужен настоящий SMS-провайдер.
-  throw new Error('SMS provider is not configured yet; refusing to start in production');
-}
-
 const pool = createPool(config.DATABASE_URL);
 const redis = new Redis(config.REDIS_URL);
 const app = await buildApp({ config, pool, redis });

@@ -5,8 +5,9 @@ export class HttpError extends Error {
     readonly statusCode: number,
     readonly code: string,
     message?: string,
+    options?: ErrorOptions,
   ) {
-    super(message ?? code);
+    super(message ?? code, options);
   }
 }
 
