@@ -11,7 +11,7 @@ export type AuthState =
 
 interface AuthValue {
   state: AuthState;
-  requestCode(phone: string): Promise<void>;
+  requestCode(phone: string): Promise<{ devCode?: string }>;
   signIn(phone: string, code: string): Promise<void>;
   signOut(): Promise<void>;
   setMe(me: Me): void;

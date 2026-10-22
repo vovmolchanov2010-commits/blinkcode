@@ -58,6 +58,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   const bus = new Bus(redis, subscriber);
   const ctx: AppContext = {
+    config,
     pool,
     redis,
     bus,

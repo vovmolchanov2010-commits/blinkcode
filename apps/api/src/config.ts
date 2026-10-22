@@ -19,6 +19,11 @@ const schema = z.object({
   /** log — коды входа пишутся в лог сервера; smsru — отправка через SMS.ru. */
   SMS_PROVIDER: optional(z.enum(['log', 'smsru'])),
   SMSRU_API_ID: optional(z.string()),
+  /**
+   * Тестовый режим: код входа возвращается в ответе на запрос кода, и приложение
+   * подставляет его само. Только для локального запуска — в production запрещён.
+   */
+  OTP_DEV_ECHO: optional(z.enum(['true', 'false'])).transform((v) => v === 'true'),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -43,6 +48,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   // В production способ доставки кодов выбирается явно, чтобы коды случайно не ушли в лог.
   if (config.NODE_ENV === 'production' && !config.SMS_PROVIDER) {
     throw new Error('SMS_PROVIDER must be set in production (smsru, or log for a closed test)');
+  }
+  if (config.NODE_ENV === 'production' && config.OTP_DEV_ECHO) {
+    throw new Error('OTP_DEV_ECHO must not be enabled in production');
   }
   if (config.SMS_PROVIDER === 'smsru' && !config.SMSRU_API_ID) {
     throw new Error('SMSRU_API_ID is required when SMS_PROVIDER=smsru');

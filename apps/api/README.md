@@ -19,6 +19,7 @@ pnpm dev                      # миграции + сервер на :3000 с п
 | `JWT_SECRET`, `OTP_SECRET` | Обязательны в production, ≥ 32 символов |
 | `SMS_PROVIDER` | `log` — коды в лог, `smsru` — SMS через sms.ru. В production задаётся явно |
 | `SMSRU_API_ID` | Ключ sms.ru для `SMS_PROVIDER=smsru` |
+| `OTP_DEV_ECHO` | `true` — код входа возвращается в ответе `/v1/auth/otp/request` (`{ devCode }`), приложение подставляет его само. Только для локального запуска, в production запрещено |
 
 Деплой в Yandex Cloud — [deploy/yandex/README.md](../../deploy/yandex/README.md).
 

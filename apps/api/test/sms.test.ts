@@ -72,3 +72,32 @@ describe('OTP request when SMS delivery fails', () => {
     await app.close();
   });
 });
+
+describe('OTP_DEV_ECHO', () => {
+  it('is forbidden in production', () => {
+    const prod = { NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(40), OTP_SECRET: 'y'.repeat(40), SMS_PROVIDER: 'log' };
+    expect(() => loadConfig({ ...prod, OTP_DEV_ECHO: 'true' })).toThrow('OTP_DEV_ECHO');
+    expect(loadConfig({ ...prod, OTP_DEV_ECHO: '' }).OTP_DEV_ECHO).toBe(false);
+  });
+
+  it('returns the code in the response so a test client can sign in without SMS', async () => {
+    const ctx = await createTestContext();
+    const app = await buildApp({
+      config: loadConfig({ NODE_ENV: 'test', OTP_DEV_ECHO: 'true' }),
+      pool: ctx.pool,
+      redis: ctx.redis,
+      sms: ctx.sms,
+      logger: false,
+    });
+    const phone = '+79990000098';
+    const res = await app.inject({ method: 'POST', url: '/v1/auth/otp/request', payload: { phone } });
+    expect(res.statusCode).toBe(200);
+    const { devCode } = res.json() as { devCode: string };
+    expect(devCode).toBe(ctx.sms.lastCode(phone));
+
+    const verify = await app.inject({ method: 'POST', url: '/v1/auth/otp/verify', payload: { phone, code: devCode } });
+    expect(verify.statusCode).toBe(200);
+    await app.close();
+    await ctx.close();
+  });
+});

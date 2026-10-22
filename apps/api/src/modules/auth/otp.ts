@@ -53,7 +53,8 @@ export class OtpService {
     private readonly sms: SmsSender,
   ) {}
 
-  async request(phone: string): Promise<void> {
+  /** Отправляет код и возвращает его (наружу отдаётся только в тестовом режиме OTP_DEV_ECHO). */
+  async request(phone: string): Promise<string> {
     const resendKey = `otp:resend:${phone}`;
     if (await this.redis.exists(resendKey)) {
       throw new HttpError(429, 'otp_resend_too_soon');
@@ -83,6 +84,7 @@ export class OtpService {
       await this.redis.del(codeKey, resendKey);
       throw new HttpError(502, 'sms_failed', 'could not send SMS', { cause: err });
     }
+    return code;
   }
 
   /** Проверяет код и сжигает его. Бросает 400/429, если код неверный. */

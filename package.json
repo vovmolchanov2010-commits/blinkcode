@@ -6,6 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "start": "node scripts/start.mjs",
     "dev": "pnpm --filter @blinkcode/api dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",

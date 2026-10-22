@@ -66,8 +66,15 @@ export class ApiClient {
 
   // --- Вход ---
 
-  async requestOtp(phone: string): Promise<void> {
-    await this.request('POST', '/v1/auth/otp/request', { phone }, { auth: false });
+  /** devCode приходит только с тестового сервера (OTP_DEV_ECHO) — тогда SMS не нужна. */
+  async requestOtp(phone: string): Promise<{ devCode?: string }> {
+    const res = await this.request<{ devCode?: string } | undefined>(
+      'POST',
+      '/v1/auth/otp/request',
+      { phone },
+      { auth: false },
+    );
+    return res ?? {};
   }
 
   async verifyOtp(phone: string, code: string): Promise<{ user: Me; isNewUser: boolean }> {

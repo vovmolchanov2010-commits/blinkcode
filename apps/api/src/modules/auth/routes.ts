@@ -15,7 +15,8 @@ const refreshSchema = z.object({ refreshToken: z.string().min(1) });
 export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.post('/v1/auth/otp/request', async (req, reply) => {
     const { phone } = parse(otpRequestSchema, req.body);
-    await ctx.otp.request(phone);
+    const code = await ctx.otp.request(phone);
+    if (ctx.config.OTP_DEV_ECHO) return { devCode: code };
     return reply.code(204).send();
   });
 

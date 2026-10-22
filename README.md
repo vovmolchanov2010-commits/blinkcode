@@ -31,6 +31,21 @@
 | 8 | [Виджет с ближайшими друзьями](docs/features/08-widget.md) | v1.1 |
 | 9 | [Импорт любимых мест и авто-«дом/работа»](docs/features/09-places-import.md) | MVP (урезанно) |
 
+## Быстрый старт: посмотреть приложение на телефоне
+
+Нужны [Docker Desktop](https://www.docker.com/products/docker-desktop/) и [Node.js 22+](https://nodejs.org) на компьютере и **Expo Go** на телефоне.
+
+```bash
+git clone https://github.com/vovmolchanov2010-commits/blinkcode.git
+cd blinkcode
+npm start
+```
+
+Команда поднимет сервер в Docker и покажет QR-код. Телефон должен быть в той же Wi-Fi, что и компьютер: отсканируй код (на iPhone — камерой, на Android — в Expo Go) и войди с любым номером — код подставится сам.
+Чтобы увидеть друг друга на карте, войди с двух телефонов под разными номерами и добавь друг друга по нику.
+
+Ограничения Expo Go: геолокация отправляется, только пока приложение открыто. Полная сборка с фоновой геолокацией — в [apps/mobile/README.md](apps/mobile/README.md).
+
 ## Разработка
 
 Монорепозиторий на pnpm:

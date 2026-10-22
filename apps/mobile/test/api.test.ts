@@ -153,6 +153,15 @@ describe('ApiClient', () => {
     expect(err).toMatchObject({ status: 409, code: 'username_taken' });
   });
 
+  it('returns the dev code from a test server and nothing from a real one', async () => {
+    const devServer = fakeFetch(() => json(200, { devCode: '123456' }));
+    const realServer = fakeFetch(() => new Response(null, { status: 204 }));
+    expect(await new ApiClient('http://api', memoryStore(), devServer.fetch).requestOtp('+79991234567')).toEqual({
+      devCode: '123456',
+    });
+    expect(await new ApiClient('http://api', memoryStore(), realServer.fetch).requestOtp('+79991234567')).toEqual({});
+  });
+
   it('builds the websocket URL with a fresh token', async () => {
     const access = jwt(900);
     const client = new ApiClient('https://api.example.com', memoryStore({ accessToken: access, refreshToken: 'r' }), vi.fn() as unknown as typeof fetch);

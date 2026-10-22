@@ -28,6 +28,7 @@ export default function SignInScreen() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   async function submitPhone() {
     const normalized = normalizePhone(phoneInput);
@@ -35,9 +36,14 @@ export default function SignInScreen() {
     setBusy(true);
     setError(null);
     try {
-      await requestCode(normalized);
+      const result = await requestCode(normalized);
       setPhone(normalized);
       setStep('code');
+      // Тестовый сервер присылает код в ответе — подставляем его.
+      if (result.devCode) {
+        setDevCode(result.devCode);
+        setCode(result.devCode);
+      }
     } catch (err) {
       // Код уже отправлен недавно — всё равно даём его ввести.
       if (err instanceof ApiError && err.code === 'otp_resend_too_soon') {
@@ -88,7 +94,9 @@ export default function SignInScreen() {
           </View>
         ) : (
           <View style={styles.form}>
-            <Muted>Код отправлен на {phone}</Muted>
+            <Muted>
+              {devCode ? `Тестовый сервер: код ${devCode} подставлен автоматически` : `Код отправлен на ${phone}`}
+            </Muted>
             <Input
               value={code}
               onChangeText={(value) => {
@@ -111,6 +119,7 @@ export default function SignInScreen() {
               onPress={() => {
                 setStep('phone');
                 setCode('');
+                setDevCode(null);
                 setError(null);
               }}
             />
