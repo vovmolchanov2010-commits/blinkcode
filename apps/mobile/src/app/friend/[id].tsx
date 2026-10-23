@@ -74,7 +74,7 @@ export default function FriendScreen() {
 
       {location && (
         <View style={{ marginTop: spacing.lg }}>
-          <Button title={`Дойти до ${displayName(friend)}`} onPress={() => router.push(`/route/${friend.id}`)} />
+          <Button title="Построить маршрут" onPress={() => router.push(`/route/${friend.id}`)} />
         </View>
       )}
 

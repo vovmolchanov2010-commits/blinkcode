@@ -135,7 +135,7 @@ export default function RouteScreen() {
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ title: `До ${name}` }} />
+      <Stack.Screen options={{ title: `Маршрут · ${name}` }} />
       <MapView
         ref={mapRef}
         style={styles.map}
