@@ -23,6 +23,8 @@ const schema = z.object({
    * Тестовый режим: код входа возвращается в ответе на запрос кода, и приложение
    * подставляет его само. Только для локального запуска — в production запрещён.
    */
+  /** Внешний адрес сервера для ссылок SOS в SMS, например https://blink.example.ru. */
+  PUBLIC_URL: optional(z.string().url().transform((v) => v.replace(/\/+$/, ''))),
   OTP_DEV_ECHO: optional(z.enum(['true', 'false'])).transform((v) => v === 'true'),
 });
 

@@ -43,40 +43,50 @@ export async function deleteRequestsBetween(db: Db, a: string, b: string): Promi
   );
 }
 
-/** Друзья, которые видят геолокацию владельца, и точность для каждого. */
-export async function listViewersOf(
-  db: Db,
-  ownerId: string,
-): Promise<{ viewerId: string; precision: Precision }[]> {
-  const { rows } = await db.query<{ friend_id: string; precision: Precision }>(
-    'SELECT friend_id, precision FROM friendships WHERE user_id = $1',
+/** Настройки владельца для зрителя: точность и «близкий друг». */
+export interface Sharing {
+  precision: Precision;
+  isClose: boolean;
+}
+
+/** Друзья, которые видят геолокацию владельца, и настройки для каждого. */
+export async function listViewersOf(db: Db, ownerId: string): Promise<({ viewerId: string } & Sharing)[]> {
+  const { rows } = await db.query<{ friend_id: string; precision: Precision; is_close: boolean }>(
+    'SELECT friend_id, precision, is_close FROM friendships WHERE user_id = $1',
     [ownerId],
   );
-  return rows.map((r) => ({ viewerId: r.friend_id, precision: r.precision }));
+  return rows.map((r) => ({ viewerId: r.friend_id, precision: r.precision, isClose: r.is_close }));
 }
 
 /** Друзья, чью геолокацию может видеть зритель, с их настройками для него. */
 export async function listOwnersVisibleTo(
   db: Db,
   viewerId: string,
-): Promise<{ ownerId: string; precision: Precision; ghostUntil: Date | null }[]> {
-  const { rows } = await db.query<{ user_id: string; precision: Precision; ghost_until: Date | null }>(
-    `SELECT f.user_id, f.precision, u.ghost_until
+): Promise<({ ownerId: string; ghostUntil: Date | null } & Sharing)[]> {
+  const { rows } = await db.query<{
+    user_id: string;
+    precision: Precision;
+    is_close: boolean;
+    ghost_until: Date | null;
+  }>(
+    `SELECT f.user_id, f.precision, f.is_close, u.ghost_until
      FROM friendships f JOIN users u ON u.id = f.user_id
      WHERE f.friend_id = $1`,
     [viewerId],
   );
-  return rows.map((r) => ({ ownerId: r.user_id, precision: r.precision, ghostUntil: r.ghost_until }));
+  return rows.map((r) => ({
+    ownerId: r.user_id,
+    precision: r.precision,
+    isClose: r.is_close,
+    ghostUntil: r.ghost_until,
+  }));
 }
 
-export async function getPrecisionFor(
-  db: Db,
-  ownerId: string,
-  viewerId: string,
-): Promise<Precision | null> {
-  const { rows } = await db.query<{ precision: Precision }>(
-    'SELECT precision FROM friendships WHERE user_id = $1 AND friend_id = $2',
+export async function getSharingFor(db: Db, ownerId: string, viewerId: string): Promise<Sharing | null> {
+  const { rows } = await db.query<{ precision: Precision; is_close: boolean }>(
+    'SELECT precision, is_close FROM friendships WHERE user_id = $1 AND friend_id = $2',
     [ownerId, viewerId],
   );
-  return rows[0]?.precision ?? null;
+  const row = rows[0];
+  return row ? { precision: row.precision, isClose: row.is_close } : null;
 }

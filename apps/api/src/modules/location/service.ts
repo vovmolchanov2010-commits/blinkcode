@@ -2,7 +2,8 @@ import type { Redis } from 'ioredis';
 import type pg from 'pg';
 import { z } from 'zod';
 import type { Bus } from '../../realtime/bus.js';
-import { getPrecisionFor, listOwnersVisibleTo, listViewersOf } from '../friends/repo.js';
+import { getSharingFor, listOwnersVisibleTo, listViewersOf } from '../friends/repo.js';
+import { getOwnerPlaces, placesOf, zoneFor } from '../places/repo.js';
 import { findUserById, isGhost } from '../users/repo.js';
 import { distanceMeters } from './geo.js';
 import { type StoredLocation, type VisibleLocation, visibleLocation } from './privacy.js';
@@ -36,12 +37,21 @@ export interface IngestResult {
   rejected: number;
 }
 
+/** Вызывается после каждой принятой позиции (сборы, SOS). */
+export type LocationListener = (userId: string, location: StoredLocation) => Promise<void>;
+
 export class LocationService {
+  private readonly listeners: LocationListener[] = [];
+
   constructor(
     private readonly pool: pg.Pool,
     private readonly redis: Redis,
     private readonly bus: Bus,
   ) {}
+
+  onAccepted(listener: LocationListener): void {
+    this.listeners.push(listener);
+  }
 
   async getLocation(userId: string): Promise<StoredLocation | null> {
     const raw = await this.redis.get(locationKey(userId));
@@ -74,6 +84,8 @@ export class LocationService {
     if (accepted > 0 && last) {
       await this.redis.set(locationKey(userId), JSON.stringify(last), 'EX', LOCATION_TTL_SEC);
       await this.broadcast(userId, { notifyHidden: false });
+      const location = last;
+      await Promise.all(this.listeners.map((listener) => listener(userId, location)));
     }
     return { accepted, rejected: points.length - accepted };
   }
@@ -89,10 +101,11 @@ export class LocationService {
     const location = await this.getLocation(ownerId);
     const ghost = isGhost(owner);
     const viewers = await listViewersOf(this.pool, ownerId);
+    const places = await getOwnerPlaces(this.pool, ownerId);
 
     await Promise.all(
-      viewers.map(({ viewerId, precision }) => {
-        const visible = visibleLocation(location, precision, ghost);
+      viewers.map(({ viewerId, precision, isClose }) => {
+        const visible = visibleLocation(location, precision, ghost, zoneFor(places, location, isClose));
         if (visible) return this.bus.publish(viewerId, { type: 'location', userId: ownerId, location: visible });
         if (notifyHidden) return this.bus.publish(viewerId, { type: 'location.removed', userId: ownerId });
         return undefined;
@@ -112,11 +125,13 @@ export class LocationService {
   }
 
   async visibleLocationOf(ownerId: string, viewerId: string): Promise<VisibleLocation | null> {
-    const precision = await getPrecisionFor(this.pool, ownerId, viewerId);
-    if (!precision) return null;
+    const sharing = await getSharingFor(this.pool, ownerId, viewerId);
+    if (!sharing) return null;
     const owner = await findUserById(this.pool, ownerId);
     if (!owner) return null;
-    return visibleLocation(await this.getLocation(ownerId), precision, isGhost(owner));
+    const location = await this.getLocation(ownerId);
+    const zone = zoneFor(await getOwnerPlaces(this.pool, ownerId), location, sharing.isClose);
+    return visibleLocation(location, sharing.precision, isGhost(owner), zone);
   }
 
   /** Все позиции друзей, которые видит зритель. */
@@ -125,12 +140,15 @@ export class LocationService {
     if (owners.length === 0) return [];
 
     const raw = await this.redis.mget(owners.map((o) => locationKey(o.ownerId)));
+    const places = await placesOf(this.pool, owners.map((o) => o.ownerId));
     const now = new Date();
     const result: { userId: string; location: VisibleLocation }[] = [];
     owners.forEach((owner, i) => {
       const stored = raw[i] ? (JSON.parse(raw[i]!) as StoredLocation) : null;
       const ghost = isGhost({ ghost_until: owner.ghostUntil }, now);
-      const visible = visibleLocation(stored, owner.precision, ghost);
+      const ownerPlaces = places.get(owner.ownerId);
+      const zone = ownerPlaces ? zoneFor(ownerPlaces, stored, owner.isClose) : null;
+      const visible = visibleLocation(stored, owner.precision, ghost, zone);
       if (visible) result.push({ userId: owner.ownerId, location: visible });
     });
     return result;

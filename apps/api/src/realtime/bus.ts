@@ -1,12 +1,28 @@
 import type { Redis } from 'ioredis';
 import type { VisibleLocation } from '../modules/location/privacy.js';
 
+/** invited — позвали; changed — организатор сдвинул время/место; status — чей-то ответ или ETA. */
+export type GatheringChangeReason = 'invited' | 'changed' | 'closed' | 'status' | 'arrived';
+
 export type RealtimeEvent =
   | { type: 'location'; userId: string; location: VisibleLocation }
   | { type: 'location.removed'; userId: string }
   | { type: 'friend.request'; fromUserId: string }
   | { type: 'friend.added'; userId: string }
-  | { type: 'friend.removed'; userId: string };
+  | { type: 'friend.removed'; userId: string }
+  | {
+      type: 'gathering.updated';
+      gatheringId: string;
+      reason: GatheringChangeReason;
+      /** Кто пришёл (reason = arrived). */
+      userId?: string;
+      startsAtFrom?: string;
+      startsAtTo?: string;
+      placeChanged?: boolean;
+    }
+  | { type: 'route.updated'; routeId: string }
+  | { type: 'sos.started'; sessionId: string; userId: string; url: string; isTest: boolean }
+  | { type: 'sos.ended'; sessionId: string; userId: string };
 
 type Handler = (event: RealtimeEvent) => void;
 

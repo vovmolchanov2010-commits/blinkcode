@@ -44,6 +44,8 @@ services:
       OTP_SECRET: ${OTP_SECRET:?OTP_SECRET is not set}
       SMS_PROVIDER: ${SMS_PROVIDER:-log}
       SMSRU_API_ID: ${SMSRU_API_ID:-}
+      # Ссылки SOS в SMS ведут на этот адрес.
+      PUBLIC_URL: https://${DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy

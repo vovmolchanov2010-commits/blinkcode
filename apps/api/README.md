@@ -19,6 +19,7 @@ pnpm dev                      # миграции + сервер на :3000 с п
 | `JWT_SECRET`, `OTP_SECRET` | Обязательны в production, ≥ 32 символов |
 | `SMS_PROVIDER` | `log` — коды в лог, `smsru` — SMS через sms.ru. В production задаётся явно |
 | `SMSRU_API_ID` | Ключ sms.ru для `SMS_PROVIDER=smsru` |
+| `PUBLIC_URL` | Внешний адрес сервера для ссылок SOS в SMS, например `https://blink.example.ru`. Без него берётся адрес из запроса |
 | `OTP_DEV_ECHO` | `true` — код входа возвращается в ответе `/v1/auth/otp/request` (`{ devCode }`), приложение подставляет его само. Только для локального запуска, в production запрещено |
 
 Деплой в Yandex Cloud — [deploy/yandex/README.md](../../deploy/yandex/README.md).
@@ -87,6 +88,62 @@ Access-токен живёт 15 минут, refresh — 30 дней.
 - `approx` — центр H3-ячейки разрешения 7 (~1.5 км), без скорости и направления;
 - в режиме «призрака» и при `hidden` друг не получает ничего.
 
+### Дом и работа (фича 9)
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/v1/me/places` | `{ visibility, places: [{ kind, lat, lng, radiusM }] }` |
+| PUT | `/v1/me/places/:kind` | `kind`: `home` \| `work`; `{ lat, lng, radiusM? }` (50–1000 м, по умолчанию 150) |
+| DELETE | `/v1/me/places/:kind` | Удалить место |
+| PUT | `/v1/me/places-visibility` | `{ visibility: "all" \| "close" \| "none" }` — кто видит статус (по умолчанию близкие) |
+
+Пока владелец внутри зоны места, его позиция для **всех** друзей размывается до `approx`, а тем, кому
+разрешено, в `location` добавляется `place: "home" | "work"`. Координаты мест друзьям не отдаются.
+
+### Сборы (фича 2)
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/v1/gatherings` | Активные сборы (до 3 ч после начала), кроме тех, от которых я отказался |
+| POST | `/v1/gatherings` | `{ title, lat, lng, placeName?, startsAt, participantIds }` — звать можно только друзей, до 30 человек |
+| GET | `/v1/gatherings/:id` | Сбор с участниками: `rsvp`, `chip`, `comment`, `etaAt`, `etaSource`, `arrivedAt` |
+| PATCH | `/v1/gatherings/:id` | Только организатор: `{ title?, lat?, lng?, placeName?, startsAt? }` |
+| POST | `/v1/gatherings/:id/close` | Только организатор |
+| PUT | `/v1/gatherings/:id/me` | `{ rsvp?: "going" \| "declined", chip?, comment?, etaMinutes? }`; `chip`: `leaving`, `on_the_way`, `stuck`, `late`, `arrived` |
+
+По входящим позициям сервер сам ставит «на месте» в радиусе 100 м и считает авто-ETA (от 2 ч до начала до
+3 ч после). ETA — оценка по прямой (×1.3, пешком 1.3 м/с или ~25 км/ч, если человек уже едет), пока не
+подключён провайдер маршрутов. Ручной статус перекрывает авто-ETA на 15 минут. В режиме «призрака» авто
+не работает.
+
+### Маршрут до друга (фича 1)
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/v1/routes` | Активные сессии: куда иду я и кто идёт ко мне |
+| POST | `/v1/routes` | `{ targetId, mode: "walk" \| "drive" }`; 409 `target_location_hidden`, если друг не показывает вам позицию |
+| GET | `/v1/routes/:id` | Сессия |
+| PATCH | `/v1/routes/:id` | Только идущий: `{ etaSec, distanceM, mode? }` |
+| POST | `/v1/routes/:id/stop` | Любая сторона: `{ reason: "arrived" \| "stopped" }` |
+
+Сессия закрывается сама через час.
+
+### SOS (фича 7)
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/v1/sos` | `{ hasPin, contacts, active }` |
+| PUT | `/v1/sos/contacts` | `{ contacts: [{ userId } \| { phone, name }] }` — до 3, друзья или номера |
+| PUT | `/v1/sos/pin` | `{ pin, currentPin? }` — 4–6 цифр; сменить можно, только зная текущий |
+| POST | `/v1/sos` | `{ test? }` → `{ session, url, smsFailed }`. Нужны PIN и хотя бы один контакт |
+| POST | `/v1/sos/extend` | +15 минут (не дольше 4 ч от начала) |
+| POST | `/v1/sos/cancel` | `{ pin }`; 5 неверных попыток — отмена блокируется до конца трансляции |
+| GET | `/s/:token` | Публичная страница трансляции (без входа, `noindex`) |
+| GET | `/s/:token/data` | Данные страницы; 404 через час после окончания |
+
+Всем контактам уходит SMS со ссылкой (друзьям — на их номер в Blink), друзьям ещё и событие
+`sos.started`. В ссылке — случайный токен, в базе только его хэш. Трек хранится 30 дней.
+
 ### WebSocket (E0-08)
 
 `GET /v1/ws?token=<accessToken>`
@@ -95,6 +152,9 @@ Access-токен живёт 15 минут, refresh — 30 дней.
 - `{ type: "snapshot", locations }` — сразу после подключения;
 - `{ type: "location", userId, location }`, `{ type: "location.removed", userId }`;
 - `{ type: "friend.request", fromUserId }`, `{ type: "friend.added", userId }`, `{ type: "friend.removed", userId }`;
+- `{ type: "gathering.updated", gatheringId, reason, userId?, startsAtFrom?, startsAtTo?, placeChanged? }`;
+- `{ type: "route.updated", routeId }`;
+- `{ type: "sos.started", sessionId, userId, url, isTest }`, `{ type: "sos.ended", sessionId, userId }`;
 - `{ type: "location.ack", accepted, rejected }`, `{ type: "pong" }`, `{ type: "error", error }`.
 
 Клиент → сервер: `{ type: "ping" }`, `{ type: "location", points: [...] }`.

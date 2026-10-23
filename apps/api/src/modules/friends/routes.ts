@@ -73,7 +73,8 @@ export function registerFriendRoutes(app: FastifyInstance, ctx: AppContext): voi
     const row = rows[0];
     if (!row) throw new HttpError(404, 'friend_not_found');
 
-    if (patch.precision !== undefined) await ctx.location.pushTo(me, userId);
+    // «Близкий друг» влияет на статус «дома» / «на работе» — тоже пересылаем позицию.
+    await ctx.location.pushTo(me, userId);
     return { userId, isClose: row.is_close, sharing: { precision: row.precision } };
   });
 
