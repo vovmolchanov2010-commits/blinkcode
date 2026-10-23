@@ -92,3 +92,27 @@ export async function sendCurrentLocation(): Promise<Location.LocationObject | n
   await api.sendLocation([toLocationPoint(location)]).catch(() => {});
   return location;
 }
+
+/** Как часто отправляем позицию, пока открыт экран маршрута или идёт SOS. */
+const ACTIVE_SEND_INTERVAL_MS = 5_000;
+
+/**
+ * Частые обновления (раз в ~5 с) для активной сессии — маршрута до друга или SOS.
+ * Работает при открытом приложении; в фоне позицию продолжает слать обычная задача.
+ * Возвращает функцию остановки.
+ */
+export async function watchLocation(onLocation: (location: Location.LocationObject) => void): Promise<() => void> {
+  const permission = await Location.getForegroundPermissionsAsync();
+  if (!permission.granted) throw new Error('location_permission_denied');
+  let lastSent = 0;
+  const subscription = await Location.watchPositionAsync(
+    { accuracy: Location.Accuracy.High, timeInterval: ACTIVE_SEND_INTERVAL_MS, distanceInterval: 5 },
+    (location) => {
+      onLocation(location);
+      if (location.timestamp - lastSent < ACTIVE_SEND_INTERVAL_MS) return;
+      lastSent = location.timestamp;
+      void api.sendLocation([toLocationPoint(location)]).catch(() => {});
+    },
+  );
+  return () => subscription.remove();
+}

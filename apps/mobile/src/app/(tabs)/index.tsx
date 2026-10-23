@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { displayName, distanceMeters, formatDistance, timeAgo } from '../../lib/format';
+import { formatDuration, PLACE_LABEL } from '../../lib/meet';
 import type { Friend, VisibleLocation } from '../../lib/types';
+import { api } from '../../services/client';
 import {
   getLocationPermission,
   isSharingDisabledByUser,
@@ -15,7 +17,9 @@ import {
 } from '../../services/location';
 import { useMe } from '../../state/auth';
 import { useFriends } from '../../state/friends';
+import { useGatherings } from '../../state/gatherings';
 import { useRealtime } from '../../state/realtime';
+import { useRoutes } from '../../state/routes';
 import { Avatar, Button, Card, Muted, Row } from '../../ui/components';
 import { colors, radius, spacing } from '../../ui/theme';
 
@@ -26,6 +30,8 @@ export default function MapScreen() {
   const me = useMe();
   const { friends } = useFriends();
   const { locations, status } = useRealtime();
+  const { routes, reload: reloadRoutes } = useRoutes();
+  const { gatherings } = useGatherings();
   const mapRef = useRef<MapView>(null);
   const [permission, setPermission] = useState<LocationPermission | null>(null);
   const [myPosition, setMyPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -71,6 +77,8 @@ export default function MapScreen() {
   );
   const selected = visibleFriends.find((item) => item.friend.id === selectedId) ?? null;
   const ghost = me?.ghostUntil ? new Date(me.ghostUntil) > new Date() : false;
+  const incoming = routes.filter((r) => r.target.id === me?.id);
+  const outgoing = routes.find((r) => r.requester.id === me?.id) ?? null;
 
   return (
     <View style={styles.container}>
@@ -94,7 +102,21 @@ export default function MapScreen() {
           >
             <View style={[styles.marker, location.precision === 'approx' && styles.markerApprox]}>
               <Avatar user={friend} size={40} dimmed={location.precision === 'approx'} />
+              {location.place && <Text style={styles.placeBadge}>{location.place === 'home' ? '🏠' : '💼'}</Text>}
             </View>
+          </Marker>
+        ))}
+        {gatherings.map((gathering) => (
+          <Marker
+            key={gathering.id}
+            coordinate={{ latitude: gathering.lat, longitude: gathering.lng }}
+            onPress={(event) => {
+              event.stopPropagation();
+              router.push(`/gathering/${gathering.id}`);
+            }}
+            tracksViewChanges={false}
+          >
+            <Text style={styles.gatheringPin}>🎉</Text>
           </Marker>
         ))}
       </MapView>
@@ -127,12 +149,49 @@ export default function MapScreen() {
             </Muted>
           </Card>
         )}
+        {incoming.map((route) => (
+          <Card key={route.id} style={styles.banner}>
+            <Row>
+              <Avatar user={route.requester} size={36} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.bannerTitle}>{displayName(route.requester)} идёт к тебе</Text>
+                <Muted>
+                  {route.etaAt
+                    ? `будет через ${formatDuration((Date.parse(route.etaAt) - Date.now()) / 1000)}`
+                    : 'считаем время…'}
+                </Muted>
+              </View>
+              <Button
+                title="Стоп"
+                variant="secondary"
+                small
+                onPress={() => void api.stopRoute(route.id, 'stopped').then(reloadRoutes, () => {})}
+              />
+            </Row>
+          </Card>
+        ))}
+        {outgoing && (
+          <Pressable style={styles.banner} onPress={() => router.push(`/route/${outgoing.target.id}`)}>
+            <Card>
+              <Muted>Ты идёшь к {displayName(outgoing.target)} · открыть маршрут</Muted>
+            </Card>
+          </Pressable>
+        )}
         {!ghost && permission !== 'denied' && visibleFriends.length === 0 && friends.length === 0 && (
           <Card style={styles.banner}>
             <Muted>Добавь друзей во вкладке «Друзья», чтобы видеть их на карте.</Muted>
           </Card>
         )}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="SOS"
+        onPress={() => router.push('/sos')}
+        style={[styles.sos, { top: insets.top + spacing.sm }]}
+      >
+        <Text style={styles.sosText}>SOS</Text>
+      </Pressable>
 
       {selected && (
         <Card style={[styles.sheet, { marginBottom: spacing.lg }]}>
@@ -145,17 +204,26 @@ export default function MapScreen() {
                 {myPosition ? ` · ${formatDistance(distanceMeters(myPosition, selected.location))}` : ''}
                 {selected.location.battery !== undefined ? ` · 🔋 ${selected.location.battery}%` : ''}
               </Muted>
-              {selected.location.precision === 'approx' && <Muted>Делится примерной геолокацией</Muted>}
+              {selected.location.place ? (
+                <Muted>{PLACE_LABEL[selected.location.place]}</Muted>
+              ) : (
+                selected.location.precision === 'approx' && <Muted>Делится примерной геолокацией</Muted>
+              )}
             </View>
           </Row>
-          <View style={{ marginTop: spacing.md }}>
-            <Button
-              title="Настройки друга"
-              variant="secondary"
-              small
-              onPress={() => router.push(`/friend/${selected.friend.id}`)}
-            />
-          </View>
+          <Row style={{ marginTop: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Button title="Дойти" small onPress={() => router.push(`/route/${selected.friend.id}`)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="Настройки"
+                variant="secondary"
+                small
+                onPress={() => router.push(`/friend/${selected.friend.id}`)}
+              />
+            </View>
+          </Row>
         </Card>
       )}
     </View>
@@ -164,7 +232,8 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  top: { position: 'absolute', left: spacing.lg, right: spacing.lg, top: 0, gap: spacing.sm, alignItems: 'center' },
+  // Справа — место под кнопку SOS.
+  top: { position: 'absolute', left: spacing.lg, right: spacing.lg + 52 + spacing.sm, top: 0, gap: spacing.sm, alignItems: 'center' },
   pill: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
@@ -178,4 +247,17 @@ const styles = StyleSheet.create({
   markerApprox: { opacity: 0.85 },
   sheet: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 0 },
   sheetName: { fontSize: 18, fontWeight: '600', color: colors.text },
+  placeBadge: { position: 'absolute', right: -6, bottom: -6, fontSize: 16 },
+  gatheringPin: { fontSize: 30 },
+  sos: {
+    position: 'absolute',
+    right: spacing.lg,
+    width: 52,
+    height: 52,
+    borderRadius: radius.round,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosText: { color: colors.primaryText, fontWeight: '800', fontSize: 15 },
 });

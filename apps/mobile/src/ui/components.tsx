@@ -144,6 +144,31 @@ export function Segmented<T extends string>({
   );
 }
 
+/** Кнопка-«таблетка»: быстрые статусы, пресеты времени, выбор друзей. */
+export function Pill({
+  label,
+  selected = false,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  selected?: boolean;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled }}
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.pill, selected && styles.pillSelected, (pressed || disabled) && { opacity: 0.6 }]}
+    >
+      <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function Row({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.row, style]}>{children}</View>;
 }
@@ -204,4 +229,15 @@ const styles = StyleSheet.create({
   segmentText: { color: colors.textMuted, fontWeight: '600' },
   segmentTextActive: { color: colors.text },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  pill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.round,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pillSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillText: { color: colors.text, fontWeight: '600', fontSize: 14 },
+  pillTextSelected: { color: colors.primaryText },
 });

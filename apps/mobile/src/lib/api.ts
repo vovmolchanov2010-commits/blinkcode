@@ -1,10 +1,21 @@
 import type {
+  Chip,
   Friend,
   FriendRequests,
+  Gathering,
   LocationPoint,
   Me,
+  MyPlaces,
+  PlaceKind,
+  PlaceVisibility,
   Precision,
   PublicProfile,
+  RouteMode,
+  RouteSession,
+  SosContact,
+  SosContactInput,
+  SosSession,
+  SosStatus,
   Tokens,
 } from './types';
 
@@ -172,6 +183,111 @@ export class ApiClient {
 
   sendLocation(points: LocationPoint[]): Promise<{ accepted: number; rejected: number }> {
     return this.request('POST', '/v1/location', { points });
+  }
+
+  // --- Дом и работа ---
+
+  myPlaces(): Promise<MyPlaces> {
+    return this.request('GET', '/v1/me/places');
+  }
+
+  setPlace(kind: PlaceKind, place: { lat: number; lng: number; radiusM?: number }): Promise<MyPlaces> {
+    return this.request('PUT', `/v1/me/places/${kind}`, place);
+  }
+
+  deletePlace(kind: PlaceKind): Promise<MyPlaces> {
+    return this.request('DELETE', `/v1/me/places/${kind}`);
+  }
+
+  setPlaceVisibility(visibility: PlaceVisibility): Promise<MyPlaces> {
+    return this.request('PUT', '/v1/me/places-visibility', { visibility });
+  }
+
+  // --- Сборы ---
+
+  async gatherings(): Promise<Gathering[]> {
+    return (await this.request<{ gatherings: Gathering[] }>('GET', '/v1/gatherings')).gatherings;
+  }
+
+  gathering(id: string): Promise<Gathering> {
+    return this.request('GET', `/v1/gatherings/${id}`);
+  }
+
+  createGathering(input: {
+    title: string;
+    lat: number;
+    lng: number;
+    placeName?: string;
+    startsAt: string;
+    participantIds: string[];
+  }): Promise<Gathering> {
+    return this.request('POST', '/v1/gatherings', input);
+  }
+
+  updateGathering(
+    id: string,
+    patch: { title?: string; lat?: number; lng?: number; placeName?: string | null; startsAt?: string },
+  ): Promise<Gathering> {
+    return this.request('PATCH', `/v1/gatherings/${id}`, patch);
+  }
+
+  closeGathering(id: string): Promise<Gathering> {
+    return this.request('POST', `/v1/gatherings/${id}/close`);
+  }
+
+  setGatheringStatus(
+    id: string,
+    status: { rsvp?: 'going' | 'declined'; chip?: Chip | null; comment?: string | null; etaMinutes?: number },
+  ): Promise<Gathering> {
+    return this.request('PUT', `/v1/gatherings/${id}/me`, status);
+  }
+
+  // --- Маршрут до друга ---
+
+  async routes(): Promise<RouteSession[]> {
+    return (await this.request<{ routes: RouteSession[] }>('GET', '/v1/routes')).routes;
+  }
+
+  route(id: string): Promise<RouteSession> {
+    return this.request('GET', `/v1/routes/${id}`);
+  }
+
+  startRoute(targetId: string, mode: RouteMode): Promise<RouteSession> {
+    return this.request('POST', '/v1/routes', { targetId, mode });
+  }
+
+  updateRoute(id: string, patch: { etaSec: number; distanceM: number; mode?: RouteMode }): Promise<RouteSession> {
+    return this.request('PATCH', `/v1/routes/${id}`, patch);
+  }
+
+  stopRoute(id: string, reason: 'arrived' | 'stopped'): Promise<RouteSession> {
+    return this.request('POST', `/v1/routes/${id}/stop`, { reason });
+  }
+
+  // --- SOS ---
+
+  sosStatus(): Promise<SosStatus> {
+    return this.request('GET', '/v1/sos');
+  }
+
+  async setSosContacts(contacts: SosContactInput[]): Promise<SosContact[]> {
+    return (await this.request<{ contacts: SosContact[] }>('PUT', '/v1/sos/contacts', { contacts })).contacts;
+  }
+
+  async setSosPin(pin: string, currentPin?: string): Promise<void> {
+    await this.request('PUT', '/v1/sos/pin', { pin, currentPin });
+  }
+
+  startSos(test: boolean): Promise<{ session: SosSession; url: string; smsFailed: number }> {
+    return this.request('POST', '/v1/sos', { test });
+  }
+
+  extendSos(): Promise<SosSession> {
+    return this.request('POST', '/v1/sos/extend');
+  }
+
+  async cancelSos(pin: string): Promise<void> {
+    await this.request('POST', '/v1/sos/cancel', { pin });
   }
 
   /** Адрес WebSocket со свежим токеном; null, если сессии нет. */

@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { ApiError } from '../../lib/api';
@@ -103,6 +103,12 @@ export default function ProfileScreen() {
           </View>
           <Switch value={sharing ?? false} onValueChange={toggleSharing} disabled={sharing === null} />
         </Row>
+      </Card>
+
+      <SectionTitle>Безопасность и места</SectionTitle>
+      <Card style={{ gap: spacing.md }}>
+        <Button title="🏠 Дом и работа" variant="secondary" onPress={() => router.push('/places')} />
+        <Button title="🆘 SOS: контакты и PIN" variant="secondary" onPress={() => router.push('/sos/setup')} />
       </Card>
 
       <SectionTitle>Режим «призрак»</SectionTitle>

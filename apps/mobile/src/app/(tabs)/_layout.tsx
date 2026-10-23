@@ -17,6 +17,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Карта', headerShown: false, tabBarIcon: icon('🗺️') }} />
+      <Tabs.Screen name="gatherings" options={{ title: 'Сборы', tabBarIcon: icon('🎉') }} />
       <Tabs.Screen name="friends" options={{ title: 'Друзья', tabBarIcon: icon('👥') }} />
       <Tabs.Screen name="profile" options={{ title: 'Профиль', tabBarIcon: icon('🙂') }} />
     </Tabs>

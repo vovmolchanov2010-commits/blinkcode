@@ -2,6 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { displayName, timeAgo } from '../../lib/format';
+import { PLACE_LABEL } from '../../lib/meet';
 import type { Precision } from '../../lib/types';
 import { api } from '../../services/client';
 import { useFriends } from '../../state/friends';
@@ -67,8 +68,15 @@ export default function FriendScreen() {
           <Text style={styles.name}>{displayName(friend)}</Text>
           {friend.username && <Muted>@{friend.username}</Muted>}
           <Muted>{location ? `На карте · ${timeAgo(location.ts)}` : 'Не на карте'}</Muted>
+          {location?.place && <Muted>{PLACE_LABEL[location.place]}</Muted>}
         </View>
       </Row>
+
+      {location && (
+        <View style={{ marginTop: spacing.lg }}>
+          <Button title={`Дойти до ${displayName(friend)}`} onPress={() => router.push(`/route/${friend.id}`)} />
+        </View>
+      )}
 
       <SectionTitle>Как {displayName(friend)} видит тебя</SectionTitle>
       <Card style={{ gap: spacing.md }}>
@@ -88,7 +96,7 @@ export default function FriendScreen() {
       <Card>
         <Row>
           <Muted style={{ flex: 1 }}>
-            Близким друзьям позже будут доступны статусы «дома» / «на работе» и SOS.
+            Близкие друзья видят статус «дома» / «на работе» (если так настроено в «Дом и работа»).
           </Muted>
           <Switch value={friend.isClose} onValueChange={(isClose) => update({ isClose })} disabled={saving} />
         </Row>
