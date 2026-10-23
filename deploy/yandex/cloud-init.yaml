@@ -1,0 +1,41 @@
+#cloud-config
+# Пользовательские данные (user-data) для ВМ в Yandex Cloud: Ubuntu 24.04 LTS.
+# При первом запуске ставит Docker, скачивает код и поднимает сервер (setup.sh).
+# Ход установки: sudo tail -f /var/log/blinkcode-setup.log
+
+datasource:
+  Ec2:
+    strict_id: false
+ssh_pwauth: no
+users:
+  - name: blink
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      # Замени на свой публичный ключ (содержимое ~/.ssh/id_ed25519.pub).
+      # create-vm.sh подставляет его сам.
+      - SSH_PUBLIC_KEY
+
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+  - openssl
+  - curl
+
+write_files:
+  # Зеркало Docker Hub: без него сборка может упираться в лимиты Docker Hub.
+  - path: /etc/docker/daemon.json
+    content: |
+      { "registry-mirrors": ["https://mirror.gcr.io"] }
+
+runcmd:
+  - systemctl restart docker
+  # Группа docker появляется только после установки пакета.
+  - usermod -aG docker blink
+  - |
+    set -e
+    BRANCH=main
+    git clone --branch "$BRANCH" https://github.com/vovmolchanov2010-commits/blinkcode.git /opt/blinkcode
+    BLINK_BRANCH="$BRANCH" /opt/blinkcode/deploy/yandex/setup.sh >> /var/log/blinkcode-setup.log 2>&1

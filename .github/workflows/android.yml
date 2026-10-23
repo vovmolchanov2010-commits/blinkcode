@@ -1,0 +1,153 @@
+name: Android APK
+
+# Собирает устанавливаемый APK приложения. Готовый файл — в разделе Artifacts запуска.
+# Запустить вручную: Actions → Android APK → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Сервер по умолчанию (в приложении его можно сменить на экране входа)"
+        required: false
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/android.yml"
+      - ".github/scripts/android-smoke.sh"
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/android.yml"
+      - ".github/scripts/android-smoke.sh"
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # Порядок: ввод при ручном запуске → переменная репозитория → локальный сервер.
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url || vars.EXPO_PUBLIC_API_URL || 'http://localhost:3000' }}
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: pnpm install --frozen-lockfile
+
+      # Нативный проект генерируется из app.config.ts (Continuous Native Generation).
+      - name: Generate android project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      # Кэш Gradle — после prebuild: до него в репозитории нет gradle-файлов.
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Release подписывается debug-ключом из шаблона Expo — APK ставится на телефон как есть.
+      - name: Build APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blink-android-${{ github.sha }}
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+
+  # Ставит собранный APK на эмулятор и проходит путь пользователя: вход → карта → сбор → профиль.
+  # Ловит падения на запуске, которые не видны ни тестам, ни сборке.
+  smoke:
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: blink
+          POSTGRES_PASSWORD: blink
+          POSTGRES_DB: blink
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blink"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgres://blink:blink@localhost:5432/blink
+      REDIS_URL: redis://localhost:6379
+      # Код входа возвращается в ответе — приложение подставит его само.
+      OTP_DEV_ECHO: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start API
+        working-directory: apps/api
+        run: |
+          pnpm build
+          node dist/db/migrate.js
+          nohup node dist/server.js > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fs localhost:3000/health && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/api.log"; exit 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: blink-android-${{ github.sha }}
+          path: apk
+
+      - name: Install Maestro
+        run: curl -fsSL "https://get.maestro.mobile.dev" | bash
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: .github/scripts/android-smoke.sh apk/app-release.apk "$RUNNER_TEMP/smoke"
+
+      - if: always()
+        run: cp "$RUNNER_TEMP/api.log" "$RUNNER_TEMP/smoke/" 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blink-android-smoke-${{ github.sha }}
+          path: ${{ runner.temp }}/smoke
+          retention-days: 14

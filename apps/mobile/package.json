@@ -1,0 +1,36 @@
+{
+  "name": "@blinkcode/mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@maplibre/maplibre-react-native": "11.5.0",
+    "expo": "~58.0.17",
+    "expo-build-properties": "~58.0.11",
+    "expo-constants": "~58.0.13",
+    "expo-dev-client": "~58.0.14",
+    "expo-linking": "~58.0.14",
+    "expo-location": "~58.0.18",
+    "expo-router": "~58.0.25",
+    "expo-secure-store": "~58.0.2",
+    "expo-status-bar": "~58.0.4",
+    "expo-task-manager": "~58.0.12",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-maps": "1.29.11",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3",
+    "vitest": "^3.2.7"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "private": true
+}

@@ -1,0 +1,47 @@
+# Дымовой тест установленного APK на эмуляторе (CI: .github/workflows/android.yml, job smoke).
+# Вход с кодом от тестового сервера (OTP_DEV_ECHO), профиль, карта, экран нового сбора, профиль.
+appId: com.blinkcode.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Получить код"
+    timeout: 90000
+- takeScreenshot: 01-sign-in
+- tapOn: "+7 999 123-45-67"
+- inputText: "+79990000001"
+- tapOn: "Получить код"
+- extendedWaitUntil:
+    visible: "Войти"
+    timeout: 30000
+- tapOn: "Войти"
+- extendedWaitUntil:
+    visible: "Привет!"
+    timeout: 30000
+- tapOn: "Имя"
+- inputText: "Smoke"
+- tapOn: "ник, например vitya"
+- inputText: "smoke_test"
+- hideKeyboard
+- tapOn: "Продолжить"
+# Экран карты: кнопка SOS поверх карты MapLibre.
+- extendedWaitUntil:
+    visible: "SOS"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: 02-map
+- tapOn: "Сборы"
+- tapOn: "Собрать друзей"
+- extendedWaitUntil:
+    visible: "Новый сбор"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: 03-new-gathering
+- back
+- tapOn: "Профиль"
+- extendedWaitUntil:
+    visible: "Режим «призрак»"
+    timeout: 30000
+- takeScreenshot: 04-profile

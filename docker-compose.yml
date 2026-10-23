@@ -1,0 +1,53 @@
+# Локальный запуск.
+#   docker compose up -d                 — только Postgres и Redis (для pnpm dev)
+#   docker compose --profile app up -d   — плюс сервер API на :3000 (так делает npm start)
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: blink
+      POSTGRES_PASSWORD: blink
+      POSTGRES_DB: blink
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blink -d blink"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://blink:blink@postgres:5432/blink
+      REDIS_URL: redis://redis:6379
+      SMS_PROVIDER: log
+      # Код входа приходит в ответе сервера, и приложение подставляет его само.
+      OTP_DEV_ECHO: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
