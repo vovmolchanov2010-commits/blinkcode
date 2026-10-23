@@ -45,11 +45,8 @@ const config: ExpoConfig = {
         isAndroidForegroundServiceEnabled: true,
       },
     ],
-    [
-      'react-native-maps',
-      // На Android react-native-maps работает через Google Maps — нужен ключ.
-      { androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY },
-    ],
+    // Карта — MapLibre с тайлами OpenFreeMap, ключ не нужен (см. src/ui/map).
+    '@maplibre/maplibre-react-native',
   ],
 };
 

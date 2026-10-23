@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { displayName, distanceMeters, formatDistance, timeAgo } from '../../lib/format';
 import { formatDuration, PLACE_LABEL } from '../../lib/meet';
@@ -21,6 +20,7 @@ import { useGatherings } from '../../state/gatherings';
 import { useRealtime } from '../../state/realtime';
 import { useRoutes } from '../../state/routes';
 import { Avatar, Button, Card, Muted, Row } from '../../ui/components';
+import { MapView, type MapViewRef, Marker, type Region } from '../../ui/map';
 import { colors, radius, spacing } from '../../ui/theme';
 
 const MOSCOW: Region = { latitude: 55.7558, longitude: 37.6173, latitudeDelta: 0.15, longitudeDelta: 0.15 };
@@ -32,7 +32,7 @@ export default function MapScreen() {
   const { locations, status } = useRealtime();
   const { routes, reload: reloadRoutes } = useRoutes();
   const { gatherings } = useGatherings();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapViewRef>(null);
   const [permission, setPermission] = useState<LocationPermission | null>(null);
   const [myPosition, setMyPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -87,18 +87,13 @@ export default function MapScreen() {
         style={StyleSheet.absoluteFill}
         initialRegion={MOSCOW}
         showsUserLocation={permission !== null && permission !== 'denied'}
-        showsMyLocationButton
         onPress={() => setSelectedId(null)}
       >
         {visibleFriends.map(({ friend, location }) => (
           <Marker
             key={friend.id}
             coordinate={{ latitude: location.lat, longitude: location.lng }}
-            onPress={(event) => {
-              event.stopPropagation();
-              setSelectedId(friend.id);
-            }}
-            tracksViewChanges={false}
+            onPress={() => setSelectedId(friend.id)}
           >
             <View style={[styles.marker, location.precision === 'approx' && styles.markerApprox]}>
               <Avatar user={friend} size={40} dimmed={location.precision === 'approx'} />
@@ -110,11 +105,7 @@ export default function MapScreen() {
           <Marker
             key={gathering.id}
             coordinate={{ latitude: gathering.lat, longitude: gathering.lng }}
-            onPress={(event) => {
-              event.stopPropagation();
-              router.push(`/gathering/${gathering.id}`);
-            }}
-            tracksViewChanges={false}
+            onPress={() => router.push(`/gathering/${gathering.id}`)}
           >
             <Text style={styles.gatheringPin}>🎉</Text>
           </Marker>

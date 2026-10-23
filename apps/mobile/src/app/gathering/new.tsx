@@ -2,12 +2,12 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { type Region } from 'react-native-maps';
 import { displayName } from '../../lib/format';
 import { defaultStartTime, formatWhen } from '../../lib/meet';
 import { api } from '../../services/client';
 import { useFriends } from '../../state/friends';
 import { Avatar, Button, Card, Input, Muted, Pill, Row, SectionTitle } from '../../ui/components';
+import { MapView, type MapViewRef, type Region } from '../../ui/map';
 import { colors, radius, spacing } from '../../ui/theme';
 
 const MOSCOW: Region = { latitude: 55.7558, longitude: 37.6173, latitudeDelta: 0.02, longitudeDelta: 0.02 };
@@ -16,7 +16,7 @@ const MINUTE = 60_000;
 /** Сбор за три шага: точка, время, кого звать. */
 export default function NewGatheringScreen() {
   const { friends } = useFriends();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapViewRef>(null);
   const [title, setTitle] = useState('');
   const [placeName, setPlaceName] = useState('');
   const [center, setCenter] = useState({ lat: MOSCOW.latitude, lng: MOSCOW.longitude });
@@ -82,7 +82,7 @@ export default function NewGatheringScreen() {
           style={StyleSheet.absoluteFill}
           initialRegion={MOSCOW}
           showsUserLocation
-          onRegionChangeComplete={(region) => setCenter({ lat: region.latitude, lng: region.longitude })}
+          onRegionChangeComplete={(center) => setCenter({ lat: center.latitude, lng: center.longitude })}
         />
         {/* Точка сбора — центр карты: двигай карту, а не булавку. */}
         <View pointerEvents="none" style={styles.pinWrap}>

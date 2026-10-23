@@ -1,7 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, Vibration, View } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import { ApiError } from '../../lib/api';
 import { displayName, distanceMeters, formatDistance, timeAgo } from '../../lib/format';
 import { estimateEtaSec, formatDuration, MEET_RADIUS_M, ROUTE_ETA_INTERVAL_MS, yandexRouteUrl } from '../../lib/meet';
@@ -11,6 +10,7 @@ import { watchLocation } from '../../services/location';
 import { useFriends } from '../../state/friends';
 import { useRealtime } from '../../state/realtime';
 import { Avatar, Button, Card, Muted, Row, Segmented } from '../../ui/components';
+import { MapView, type MapViewRef, Marker, Polyline } from '../../ui/map';
 import { colors, spacing } from '../../ui/theme';
 
 /** Позиция друга старше этого — показываем «данные устарели». */
@@ -24,7 +24,7 @@ export default function RouteScreen() {
   const { id: friendId } = useLocalSearchParams<{ id: string }>();
   const { friends } = useFriends();
   const { locations, subscribe } = useRealtime();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapViewRef>(null);
   const [mode, setMode] = useState<RouteMode>('walk');
   const [session, setSession] = useState<RouteSession | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +145,7 @@ export default function RouteScreen() {
         }
       >
         {target && friend && (
-          <Marker coordinate={{ latitude: target.lat, longitude: target.lng }} tracksViewChanges={false}>
+          <Marker coordinate={{ latitude: target.lat, longitude: target.lng }}>
             <Avatar user={friend} size={40} dimmed={target.precision === 'approx'} />
           </Marker>
         )}
@@ -157,7 +157,7 @@ export default function RouteScreen() {
             ]}
             strokeColor={colors.primary}
             strokeWidth={4}
-            lineDashPattern={[8, 6]}
+            dashed
           />
         )}
       </MapView>

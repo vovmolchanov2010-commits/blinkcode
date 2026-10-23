@@ -30,8 +30,7 @@ APK собирается в GitHub Actions (workflow **Android APK**) — Androi
    (компьютер с `npm start` в той же Wi-Fi) или `https://<IP>.sslip.io` (сервер в Yandex Cloud).
 
 Адрес по умолчанию можно зашить в сборку: поле при ручном запуске или переменная репозитория `EXPO_PUBLIC_API_URL`
-(Settings → Secrets and variables → Actions → Variables). Ключ Google Maps — секрет `GOOGLE_MAPS_ANDROID_API_KEY`;
-без него карта на Android пустая.
+(Settings → Secrets and variables → Actions → Variables).
 
 Сборка подписана debug-ключом — для теста. Для Google Play понадобится свой ключ подписи.
 
@@ -57,7 +56,7 @@ EXPO_PUBLIC_API_URL=http://<IP компьютера>:3000 npx expo run:ios      
 | Переменная | Зачем |
 |---|---|
 | `EXPO_PUBLIC_API_URL` | Адрес API. По умолчанию `http://localhost:3000`; для эмулятора Android — `http://10.0.2.2:3000`, для телефона — IP компьютера в локальной сети |
-| `GOOGLE_MAPS_ANDROID_API_KEY` | Ключ Google Maps — без него на Android карта будет пустой. iOS использует Apple Maps |
+| `EXPO_PUBLIC_MAP_STYLE_URL` | Стиль карты MapLibre. По умолчанию OpenFreeMap (`https://tiles.openfreemap.org/styles/liberty`) — без ключа |
 
 Код для входа в разработке приходит не по SMS, а в лог API: `SMS: Код для входа: 123456`.
 
@@ -90,6 +89,7 @@ src/
   services/         нативное: хранение токенов, фоновая геолокация
   state/            контексты и хуки: вход, real-time, друзья, сборы, маршруты, всплывающие события
   ui/               общие компоненты и цвета
+    map/            карта: MapLibre в приложении, react-native-maps в Expo Go
 ```
 
 Токены хранятся в Keychain / Keystore (`expo-secure-store`) с доступом после первой разблокировки —

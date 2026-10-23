@@ -1,7 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Circle, Marker } from 'react-native-maps';
 import { displayName } from '../../lib/format';
 import {
   CHIP_LABEL,
@@ -18,6 +17,7 @@ import { useMe } from '../../state/auth';
 import { useGathering } from '../../state/gatherings';
 import { useRealtime } from '../../state/realtime';
 import { Avatar, Button, Card, Input, Muted, Pill, Row, SectionTitle } from '../../ui/components';
+import { Circle, MapView, Marker } from '../../ui/map';
 import { colors, radius, spacing } from '../../ui/theme';
 
 const CHIPS: Chip[] = ['leaving', 'on_the_way', 'stuck', 'late', 'arrived'];
@@ -91,12 +91,12 @@ export default function GatheringScreen() {
             strokeColor={colors.primary}
             fillColor="rgba(91,75,255,0.12)"
           />
-          <Marker coordinate={{ latitude: g.lat, longitude: g.lng }} title={g.placeName ?? g.title} />
+          <Marker coordinate={{ latitude: g.lat, longitude: g.lng }} />
           {g.participants.map((p) => {
             const location = locations[p.user.id];
             if (!location || p.rsvp !== 'going') return null;
             return (
-              <Marker key={p.user.id} coordinate={{ latitude: location.lat, longitude: location.lng }} tracksViewChanges={false}>
+              <Marker key={p.user.id} coordinate={{ latitude: location.lat, longitude: location.lng }}>
                 <Avatar user={p.user} size={32} dimmed={location.precision === 'approx'} />
               </Marker>
             );
