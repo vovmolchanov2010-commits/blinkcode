@@ -25,6 +25,11 @@ export interface TokenStore {
   clear(): Promise<void>;
 }
 
+/** «Сервер» внутри приложения (демо-режим): отвечает на те же запросы без сети. */
+export interface LocalBackend {
+  handle(method: string, path: string, body: unknown): Promise<unknown>;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -64,6 +69,7 @@ export class ApiClient {
 
   private tokens: Tokens | null | undefined;
   private refreshing: Promise<Tokens | null> | null = null;
+  private local: LocalBackend | null = null;
 
   constructor(
     private url: string,
@@ -80,7 +86,17 @@ export class ApiClient {
     this.url = url.replace(/\/+$/, '');
   }
 
+  /** Включить демо-режим (backend) или вернуться к настоящему серверу (null). */
+  useLocalBackend(backend: LocalBackend | null): void {
+    this.local = backend;
+  }
+
+  get isLocal(): boolean {
+    return this.local !== null;
+  }
+
   async hasSession(): Promise<boolean> {
+    if (this.local) return true;
     return (await this.loadTokens()) !== null;
   }
 
@@ -109,6 +125,10 @@ export class ApiClient {
   }
 
   async logout(): Promise<void> {
+    if (this.local) {
+      this.local = null;
+      return;
+    }
     const tokens = await this.loadTokens();
     if (tokens) {
       // Если сервер недоступен, всё равно выходим локально.
@@ -292,6 +312,7 @@ export class ApiClient {
 
   /** Адрес WebSocket со свежим токеном; null, если сессии нет. */
   async realtimeUrl(): Promise<string | null> {
+    if (this.local) return null;
     const token = await this.freshAccessToken();
     if (!token) return null;
     const wsBase = this.baseUrl.replace(/^http/, 'ws');
@@ -306,6 +327,7 @@ export class ApiClient {
     body?: unknown,
     { auth = true }: { auth?: boolean } = {},
   ): Promise<T> {
+    if (this.local) return (await this.local.handle(method, path, body)) as T;
     let token: string | null = null;
     if (auth) {
       token = await this.freshAccessToken();

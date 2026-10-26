@@ -113,6 +113,11 @@ export default function MapScreen() {
       </MapView>
 
       <View style={[styles.top, { paddingTop: insets.top + spacing.sm }]} pointerEvents="box-none">
+        {api.isLocal && (
+          <View style={styles.pill}>
+            <Text style={styles.pillText}>Демо-режим · друзья выдуманные</Text>
+          </View>
+        )}
         {status !== 'open' && (
           <View style={styles.pill}>
             <Text style={styles.pillText}>{status === 'connecting' ? 'Подключаемся…' : 'Нет связи'}</Text>

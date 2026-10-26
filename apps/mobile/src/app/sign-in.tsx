@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '../lib/api';
 import { normalizePhone, normalizeServerUrl } from '../lib/format';
-import { api, setServerUrl } from '../services/client';
+import { api, demo, setServerUrl } from '../services/client';
 import { useAuth } from '../state/auth';
 import { Button, ErrorText, Input, Muted, Title } from '../ui/components';
 import { colors, spacing } from '../ui/theme';
@@ -22,7 +22,7 @@ function errorMessage(err: unknown): string {
 }
 
 export default function SignInScreen() {
-  const { requestCode, signIn } = useAuth();
+  const { requestCode, signIn, startDemo } = useAuth();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phoneInput, setPhoneInput] = useState('');
   const [phone, setPhone] = useState('');
@@ -74,6 +74,17 @@ export default function SignInScreen() {
     setServer(api.baseUrl);
     setEditingServer(false);
     setError(null);
+  }
+
+  async function openDemo() {
+    setBusy(true);
+    setError(null);
+    try {
+      await startDemo();
+    } catch {
+      setError('Не удалось открыть демо. Попробуй ещё раз.');
+      setBusy(false);
+    }
   }
 
   async function submitCode(value = code) {
@@ -138,6 +149,14 @@ export default function SignInScreen() {
                 <Muted style={styles.serverLink}>Сервер: {server} · изменить</Muted>
               </Pressable>
             )}
+
+            <View style={styles.demo}>
+              <Button title="Посмотреть демо без сервера" variant="secondary" onPress={openDemo} disabled={busy} />
+              <Muted style={styles.demoHint}>
+                Выдуманные друзья, сбор и маршрут — чтобы показать приложение. PIN для отмены SOS в демо:{' '}
+                {demo.demoPin}.
+              </Muted>
+            </View>
           </View>
         ) : (
           <View style={styles.form}>
@@ -184,4 +203,6 @@ const styles = StyleSheet.create({
   form: { gap: spacing.md },
   server: { gap: spacing.sm, marginTop: spacing.lg },
   serverLink: { textAlign: 'center', marginTop: spacing.lg, fontSize: 13 },
+  demo: { marginTop: spacing.xl, gap: spacing.sm },
+  demoHint: { textAlign: 'center', fontSize: 13 },
 });

@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { Me } from '../lib/types';
-import { api, loadServerUrl } from '../services/client';
+import { api, loadServerUrl, setDemoMode } from '../services/client';
 import { stopSharingLocation } from '../services/location';
 
 export type AuthState =
@@ -13,6 +13,8 @@ interface AuthValue {
   state: AuthState;
   requestCode(phone: string): Promise<{ devCode?: string }>;
   signIn(phone: string, code: string): Promise<void>;
+  /** Войти в демо-режим: выдуманные друзья, без сервера. */
+  startDemo(): Promise<void>;
   signOut(): Promise<void>;
   setMe(me: Me): void;
   reloadMe(): Promise<void>;
@@ -48,9 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { user } = await api.verifyOtp(phone, code);
         setState({ status: 'signedIn', me: user });
       },
+      async startDemo() {
+        await setDemoMode(true);
+        setState({ status: 'signedIn', me: await api.me() });
+      },
       async signOut() {
         await stopSharingLocation().catch(() => {});
+        const wasDemo = api.isLocal;
         await api.logout();
+        if (wasDemo) await setDemoMode(false);
         setState({ status: 'signedOut' });
       },
       setMe: (me) => setState({ status: 'signedIn', me }),

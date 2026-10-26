@@ -90,7 +90,7 @@ export default function ProfileScreen() {
         <Avatar user={me} size={56} />
         <View>
           <Text style={styles.name}>{me.displayName ?? 'Без имени'}</Text>
-          <Muted>{me.phone}</Muted>
+          <Muted>{api.isLocal ? 'Демо-режим' : me.phone}</Muted>
         </View>
       </Row>
 
@@ -161,10 +161,14 @@ export default function ProfileScreen() {
           title="Выйти"
           variant="danger"
           onPress={() =>
-            Alert.alert('Выйти из аккаунта?', 'Друзья перестанут видеть тебя на карте.', [
-              { text: 'Отмена', style: 'cancel' },
-              { text: 'Выйти', style: 'destructive', onPress: () => void signOut() },
-            ])
+            Alert.alert(
+              api.isLocal ? 'Выйти из демо?' : 'Выйти из аккаунта?',
+              api.isLocal ? 'Вернёшься на экран входа.' : 'Друзья перестанут видеть тебя на карте.',
+              [
+                { text: 'Отмена', style: 'cancel' },
+                { text: 'Выйти', style: 'destructive', onPress: () => void signOut() },
+              ],
+            )
           }
         />
       </View>

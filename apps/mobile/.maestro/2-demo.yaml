@@ -1,0 +1,36 @@
+# Демо-режим без сервера: карта с выдуманными друзьями, сбор, SOS.
+appId: com.blinkcode.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Получить код"
+    timeout: 90000
+- hideKeyboard
+- tapOn: "Посмотреть демо без сервера"
+- extendedWaitUntil:
+    visible: "Демо-режим · друзья выдуманные"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "Дима идёт к тебе"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: demo-01-map
+- tapOn: "Сборы"
+- tapOn: "Бар на Покровке"
+- extendedWaitUntil:
+    visible: "Пойдёшь?"
+    timeout: 15000
+- tapOn: "Иду"
+- extendedWaitUntil:
+    visible: "Выхожу"
+    timeout: 15000
+- takeScreenshot: demo-02-gathering
+- back
+- tapOn: "Карта"
+- tapOn: "SOS"
+- extendedWaitUntil:
+    visible: "Удерживай 3 секунды"
+    timeout: 15000
+- takeScreenshot: demo-03-sos

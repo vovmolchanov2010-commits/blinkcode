@@ -15,7 +15,7 @@ adb shell pm grant com.blinkcode.app android.permission.ACCESS_FINE_LOCATION || 
 adb shell pm grant com.blinkcode.app android.permission.ACCESS_COARSE_LOCATION || true
 adb logcat -c
 
-"$HOME/.maestro/bin/maestro" test apps/mobile/.maestro/smoke.yaml --test-output-dir "$OUT"
+"$HOME/.maestro/bin/maestro" test apps/mobile/.maestro --test-output-dir "$OUT"
 status=$?
 
 adb logcat -d > "$OUT/logcat.txt"

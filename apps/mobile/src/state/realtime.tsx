@@ -13,7 +13,7 @@ import { AppState } from 'react-native';
 import { applyEvent, type FriendLocations } from '../lib/friendLocations';
 import { RealtimeClient, type RealtimeStatus } from '../lib/realtime';
 import type { ServerEvent } from '../lib/types';
-import { api } from '../services/client';
+import { api, demo } from '../services/client';
 import { useAuth } from './auth';
 
 type Listener = (event: ServerEvent) => void;
@@ -40,6 +40,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'snapshot', locations: [] });
       return;
     }
+    if (api.isLocal) return startDemoRealtime(dispatch, setStatus, listeners.current);
     const client = new RealtimeClient({
       getUrl: () => api.realtimeUrl(),
       onEvent: (event) => {
@@ -67,6 +68,30 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ locations, status, subscribe }), [locations, status, subscribe]);
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
+}
+
+/** Как часто в демо-режиме друзья делают шаг к тебе. */
+const DEMO_TICK_MS = 4_000;
+
+/** Демо-режим: события идут от демо-«сервера» в памяти, а не по WebSocket. */
+function startDemoRealtime(
+  dispatch: (event: ServerEvent) => void,
+  setStatus: (status: RealtimeStatus) => void,
+  listeners: Set<Listener>,
+): () => void {
+  const deliver = (event: ServerEvent) => {
+    dispatch(event);
+    for (const listener of listeners) listener(event);
+  };
+  setStatus('open');
+  deliver(demo.snapshot());
+  const unsubscribe = demo.subscribe(deliver);
+  const timer = setInterval(() => demo.tick(), DEMO_TICK_MS);
+  return () => {
+    clearInterval(timer);
+    unsubscribe();
+    setStatus('closed');
+  };
 }
 
 export function useRealtime(): RealtimeValue {
